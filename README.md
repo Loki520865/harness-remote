@@ -1,6 +1,10 @@
-# Harness 助手（Harness Remote）
+# Harness Remote
 
-> 用手机遥控电脑上的 DeepSeek Harness 桌面 AI —— 端到端自部署，数据全程走你自己的服务器。
+> Control [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) on your PC from your phone — fully self-hosted, end-to-end private.
+
+**English:** Harness Remote is a self-hosted remote-control system for DeepSeek Harness, the desktop AI agent. Send instructions from your Android phone → the AI on your PC does the work (runs commands, reads/writes files, calls tools) → results stream back to your phone in real time. All traffic goes through your own relay server; no third party sees your data.
+
+**中文简介：** 用手机遥控电脑上的 DeepSeek Harness 桌面 AI —— 手机发指令，电脑端 AI 干活，结果实时回传。端到端自部署，数据全程走你自己的服务器。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Version](https://img.shields.io/badge/version-0.7.0-blue)
@@ -8,15 +12,15 @@
 ![Android](https://img.shields.io/badge/Android-Java%20native-orange)
 ![Server](https://img.shields.io/badge/Server-Node.js%20%2B%20WebSocket-339933)
 
-## ✨ 功能亮点
+## ✨ 功能亮点 / Features
 
-- **📱 手机遥控电脑 AI**：对话、思考过程、工具调用实时同步到手机
-- **🖥 远程终端**：手机上直接执行电脑命令（高危命令二次确认，不怕手滑）
-- **🔀 模型切换**：DeepSeek Chat / Reasoner 一键切换（新会话生效）
-- **🌿 会话分支**：从任意历史会话 fork 出新会话继续，多线任务互不干扰
-- **📈 轨迹面板**：查看单条会话的完整事件时间线（思考 / 工具 / 消息 / 耗时）
-- **🖼 图片 OCR**：手机选图 → 电脑本地识别 → 文本直接插入输入框（Windows 10+，离线免费）
-- **🔐 端到端自部署**：数据不出你的服务器，账号体系（邀请码 + 邮箱验证 + 密码）自带
+- **📱 Remote control your PC AI from your phone**：对话、思考过程、工具调用实时同步到手机 / chats, reasoning and tool calls stream to your phone in real time
+- **🖥 Remote terminal**：手机上直接执行电脑命令（高危命令二次确认，不怕手滑）/ run commands on your PC from your phone with a high-risk command confirmation
+- **🔀 Model switching**：DeepSeek Chat / Reasoner 一键切换（新会话生效）/ switch between DeepSeek Chat and Reasoner
+- **🌿 Session forking**：从任意历史会话 fork 出新会话继续，多线任务互不干扰 / fork any past session to continue work on a new thread
+- **📈 Trace timeline**：查看单条会话的完整事件时间线（思考 / 工具 / 消息 / 耗时）/ full event timeline of a session, incl. tool durations
+- **🖼 Offline OCR**：手机选图 → 电脑本地识别 → 文本直接插入输入框（Windows 10+，离线免费）/ pick an image on your phone, OCR it on your PC, insert text into the input box
+- **🔐 End-to-end self-hosted**：数据不出你的服务器，账号体系（邀请码 + 邮箱验证 + 密码）自带 / data never leaves your own server, with invite-code + email-verification account system
 
 ## 架构
 
