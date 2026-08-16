@@ -1,26 +1,32 @@
 # Harness 助手（Harness Remote）
 
-用手机遥控电脑上的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 桌面 AI：手机发指令 → 电脑端 AI 干活（跑命令、读写文件、调用工具）→ 结果实时回传手机。端到端自部署，数据走你自己的中继服务器。
+> 用手机遥控电脑上的 DeepSeek Harness 桌面 AI —— 端到端自部署，数据全程走你自己的服务器。
 
-## 功能
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![Platform](https://img.shields.io/badge/platform-Android%20%2B%20Windows-lightgrey)
+![Android](https://img.shields.io/badge/Android-Java%20native-orange)
+![Server](https://img.shields.io/badge/Server-Node.js%20%2B%20WebSocket-339933)
 
-- **手机遥控电脑 AI**：对话、思考过程、工具调用实时同步到手机
-- **远程终端**：手机上直接执行电脑命令（高危命令二次确认）
-- **模型切换**：DeepSeek Chat / Reasoner 一键切换（新会话生效）
-- **会话管理**：历史会话查看、重命名、删除、**分支**（从任意会话 fork 出新会话继续）
-- **轨迹面板**：查看单条会话的完整事件时间线（思考/工具/消息/耗时）
-- **图片 OCR**：手机选图 → 电脑本地 OCR 识别 → 文本插入输入框（Windows 10+ 语言包）
-- **多设备**：一个中继服务器可对接多台电脑设备
-- **账号体系**：邀请码注册 + 邮箱验证码 + 密码登录（SMTP 发信）
+## ✨ 功能亮点
+
+- **📱 手机遥控电脑 AI**：对话、思考过程、工具调用实时同步到手机
+- **🖥 远程终端**：手机上直接执行电脑命令（高危命令二次确认，不怕手滑）
+- **🔀 模型切换**：DeepSeek Chat / Reasoner 一键切换（新会话生效）
+- **🌿 会话分支**：从任意历史会话 fork 出新会话继续，多线任务互不干扰
+- **📈 轨迹面板**：查看单条会话的完整事件时间线（思考 / 工具 / 消息 / 耗时）
+- **🖼 图片 OCR**：手机选图 → 电脑本地识别 → 文本直接插入输入框（Windows 10+，离线免费）
+- **🔐 端到端自部署**：数据不出你的服务器，账号体系（邀请码 + 邮箱验证 + 密码）自带
 
 ## 架构
 
-```
-手机 App (Android)  ──wss──►  中继服务器 (server/)  ──wss──►  电脑桌面伴侣 (desktop-companion/)
-                                                                    │
-                                                            拉起 DeepSeek Harness (dsh SDK)
-                                                                    │
-                                                             电脑本地 AI 干活
+```mermaid
+flowchart LR
+    A[📱 手机 App<br/>Android · 纯 Java] -- wss --> B[🌐 中继服务器<br/>Node.js + WebSocket]
+    B -- wss --> C[💻 桌面伴侣<br/>desktop-companion]
+    C --> D[🧠 DeepSeek Harness<br/>dsh-sdk 本地进程]
+    D --> E[🛠 工具 · Shell · 文件系统]
+    C -. 本地面板 localhost:8717 .-> F[👤 配置 API Key]
 ```
 
 三部分都要自部署：
@@ -91,6 +97,15 @@ gradle assembleRelease     # 或直接用 Android Studio 打开构建
 └── docs/                # 架构与协议说明（见下）
 ```
 
+## 技术栈
+
+| 层 | 技术 | 亮点 |
+|----|------|------|
+| 手机端 | Android 原生 Java | 零第三方依赖，离线可用，直接 Build APK |
+| 中继层 | Node.js + `ws` | 轻量透明转发，一个服务器可挂多台电脑 |
+| 电脑端 | `@deepseek-ai/dsh-sdk-client` | 直接驱动官方 Harness SDK，协议扩展即插即用 |
+| 扩展协议 | JSON-RPC over WebSocket | `terminal.exec` / `session.fork` / `ocr.image` 等 6 个扩展 op |
+
 ## 协议扩展（v0.7.0）
 
 桌面伴侣在 dsh JSON-RPC 协议上扩展了以下 op，App 与桌面端间经服务器透明转发：
@@ -113,6 +128,10 @@ gradle assembleRelease     # 或直接用 Android Studio 打开构建
 ## License
 
 [MIT](LICENSE)
+
+## Star ⭐ 支持
+
+如果这个项目对你有帮助，欢迎点个 Star —— 你的支持是我持续更新的动力！
 
 ## 致谢
 
