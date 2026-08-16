@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Harness助手: 沿用晨曦AI 仿 Trae 深色系(黑灰底 + 绿色点缀) -->
+    <style name="Theme.HarnessAssistant" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0F1115</item>
+        <item name="android:navigationBarColor">#0F1115</item>
+        <item name="android:windowBackground">#0F1115</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

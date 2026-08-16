@@ -1,0 +1,19 @@
+{
+  "name": "harness-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Harness助手 · 最小转发服务器（传话筒）：device.online / chat.send / event 三件事",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
+}

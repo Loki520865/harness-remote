@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.harness.assistant'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.harness.assistant"
+        minSdk 26
+        targetSdk 34
+        versionCode 22
+        versionName "0.7.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug   // M1: 沿用 debug 签名, 便于安装验证
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures {
+        buildConfig true
+    }
+}

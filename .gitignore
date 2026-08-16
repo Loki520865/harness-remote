@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 桌面伴侣运行时产物
+desktop-companion/.sessions/
+desktop-companion/diag.out.txt
+desktop-companion/scripts/*.bak.zstd
+
+# Android / Gradle
+mobile-app/.gradle/
+mobile-app/local.properties
+mobile-app/app/build/
+mobile-app/build/
+*.apk
+*.aab
+
+# 服务器本地数据（敏感：用户库 / 配置 / 版本信息）
+server/config.json
+server/users.json
+server/users-test.json
+server/dist/
+server/deploy/
+
+# 环境与密钥
+.env
+.env.*
+*.pem
+*.key
+credentials.yaml
+.harness-desktop.json
+
+# 系统
+.DS_Store
+Thumbs.db

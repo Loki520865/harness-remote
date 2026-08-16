@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness助手 · 桌面伴侣</title>
+<style>
+  :root {
+    --bg: #0F1115; --card: #17191E; --txt: #FFFFFF; --sub: #A1A7B0;
+    --accent: #00E676; --err: #F14C4C; --input: #1F2228; --border: #2A2D33;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--txt);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    padding: 20px; max-width: 900px; margin: 0 auto;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: var(--sub); font-size: 12px; margin-bottom: 16px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .card .label { color: var(--sub); font-size: 11px; margin-bottom: 4px; }
+  .card .value { font-size: 14px; word-break: break-all; }
+  .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .dot.up { background: var(--accent); }
+  .dot.down { background: var(--err); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .log {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; height: 380px; overflow-y: auto;
+    font-family: Consolas, monospace; font-size: 12px; line-height: 1.7;
+  }
+  .log .row { display: flex; gap: 8px; }
+  .log .time { color: var(--sub); flex: none; }
+  .log .tag { color: var(--accent); flex: none; }
+  .log .txt { color: var(--txt); word-break: break-all; }
+  .log .row.down .tag { color: var(--err); }
+  .log .row.down .txt { color: var(--err); }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+  .btn {
+    background: var(--input); color: var(--sub); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+  }
+  .btn:hover { color: var(--txt); }
+  .auto { color: var(--sub); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .auto input { accent-color: var(--accent); }
+  .loginCard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 420px; margin-top: 8px; }
+  .loginInput { width: 100%; background: var(--input); color: var(--txt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; outline: none; }
+  .loginInput:focus { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #0F1115; font-weight: 600; width: 100%; padding: 10px; border: none; }
+  .btn.primary:hover { color: #0F1115; opacity: .9; }
+  .err { color: var(--err); }
+  .hint { color: var(--sub); font-size: 12px; margin-top: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <!-- v0.6.8：登录视图（未登录时显示，覆盖主视图） -->
+  <div id="loginView" style="display:none">
+    <h1>Harness助手 · 登录</h1>
+    <div class="sub">用手机 App 注册的账号登录（邮箱+密码）。DeepSeek API Key 首次填写后自动保存到本机。</div>
+    <div class="loginCard">
+      <div class="label">邮箱</div>
+      <input type="email" id="loginEmail" class="loginInput" placeholder="you@example.com" autocomplete="email">
+      <div class="label">密码</div>
+      <input type="password" id="loginPassword" class="loginInput" placeholder="登录密码" autocomplete="current-password">
+      <div class="label">DeepSeek API Key（可选，仅首次需填）</div>
+      <input type="password" id="loginApiKey" class="loginInput" placeholder="sk-..." autocomplete="off">
+      <button class="btn primary" id="loginBtn">登录并启动</button>
+      <div class="err" id="loginErr"></div>
+      <div class="hint">还没账号？先在手机 App 上用邀请码注册（注册时设置密码）。忘记密码？App 登录页用邮箱验证码找回。</div>
+    </div>
+  </div>
+
+  <div id="mainView" style="display:none">
+  <h1>Harness助手 · 桌面伴侣</h1>
+  <div class="sub">本页面仅本机可访问（127.0.0.1），不对外网开放。手机 App 才是主界面，这里用于对照状态。</div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">登录账号</div>
+      <div class="value" id="accountEmail">-</div>
+    </div>
+    <div class="card">
+      <div class="label">链路状态（服务器 ↔ 电脑）</div>
+      <div class="value"><span class="dot" id="linkDot"></span><span id="linkText">未知</span></div>
+    </div>
+    <div class="card">
+      <div class="label">设备 ID</div>
+      <div class="value" id="deviceId">-</div>
+    </div>
+    <div class="card">
+      <div class="label">服务器地址</div>
+      <div class="value" id="relayUrl">-</div>
+    </div>
+    <div class="card">
+      <div class="label">会话状态</div>
+      <div class="value" id="sessionState">-</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" id="clearBtn">清空日志</button>
+    <label class="auto"><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+  </div>
+  <div class="log" id="log"></div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+const sessions = new Map();
+
+// v0.6.8：首屏判断登录状态 → 未登录显示登录视图
+(async () => {
+  let status = { loggedIn: false, email: '' };
+  try {
+    status = await (await fetch('/api/status')).json();
+  } catch {}
+  if (status.loggedIn) {
+    $('mainView').style.display = '';
+    if (status.email) $('accountEmail').textContent = status.email;
+  } else {
+    $('loginView').style.display = '';
+  }
+})();
+
+// v0.6.8：登录提交
+$('loginBtn').onclick = async () => {
+  const err = $('loginErr');
+  err.textContent = '';
+  const btn = $('loginBtn');
+  btn.disabled = true;
+  btn.textContent = '登录中...';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: $('loginEmail').value.trim(),
+        password: $('loginPassword').value,
+        apiKey: $('loginApiKey').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      err.textContent = data.error || '登录失败';
+    }
+  } catch (e) {
+    err.textContent = '无法连接本地面板服务: ' + (e.message || String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登录并启动';
+  }
+};
+
+function append(type, data) {
+  const row = document.createElement('div');
+  row.className = 'row' + (data.level === 'err' ? ' down' : '');
+  const time = new Date(data.ts || Date.now());
+  const t = String(time.getHours()).padStart(2,'0') + ':' +
+            String(time.getMinutes()).padStart(2,'0') + ':' +
+            String(time.getSeconds()).padStart(2,'0');
+  const tag = document.createElement('span'); tag.className = 'time'; tag.textContent = t;
+  const tag2 = document.createElement('span'); tag2.className = 'tag'; tag2.textContent = type;
+  const txt = document.createElement('span'); txt.className = 'txt';
+  txt.textContent = data.text || JSON.stringify(data);
+  row.append(tag, tag2, txt);
+  logEl.appendChild(row);
+  if ($('autoScroll').checked) logEl.scrollTop = logEl.scrollHeight;
+}
+
+$('clearBtn').onclick = () => { logEl.innerHTML = ''; };
+
+const es = new EventSource('/events');
+es.onmessage = (e) => {
+  let ev;
+  try { ev = JSON.parse(e.data); } catch { return; }
+  const { type, data } = ev;
+  switch (type) {
+    case 'link':
+      $('linkDot').className = 'dot ' + data.state;
+      $('linkText').textContent = data.state === 'up' ? '已连接' : '已断开';
+      append('link', { text: data.state === 'up' ? '链路已连接' : '链路断开（3秒后重连）' });
+      break;
+    case 'log':
+      append('log', { text: data.text, ts: ev.ts });
+      break;
+    case 'forward':
+      if (data.op === 'session.status') {
+        $('sessionState').textContent = String(data.status ?? '-');
+        append('status', { text: '会话状态: ' + (data.status ?? '-'), ts: ev.ts });
+      } else if (data.op === 'event') {
+        const evType = data.event?.type ?? '?';
+        append('event', { text: evType, ts: ev.ts });
+      } else {
+        append('relay', { text: data.op + ' ' + JSON.stringify(data).slice(0, 120), ts: ev.ts });
+      }
+      break;
+    default:
+      append(type, data);
+  }
+};
+</script>
+</body>
+</html>

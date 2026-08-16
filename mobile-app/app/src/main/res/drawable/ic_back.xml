@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.3.3: 全局统一返回键矢量图标 —— 线条式 <(无横杆), 替代 Unicode "←" 字符 -->
+<!-- 2.3.3: 尺寸定稿 16dp/2.0(用户认可粗细); 箭头两条边过长, 上下各截短(垂直跨距 4.5~19.5 → 6.5~17.5), 顶点略右移保持角度 -->
+<!-- 颜色由调用方 setColorFilter(Theme.sub) 统一染色, 此处仅作兜底 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M19.5,6.5 L12.5,12 L19.5,17.5"
+        android:strokeColor="#4F6338"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
