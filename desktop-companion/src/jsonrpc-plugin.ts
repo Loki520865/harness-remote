@@ -14,7 +14,9 @@ import { HarnessCompanionJsonRpcServer } from './jsonrpc-server.ts'
 export const name = 'sdk-jsonrpc-server'
 // Only the agent factory is required; initialize reads the optional LLM seam with ctx.get().
 // v0.6.4: userQuestions service（dsh-user-questions，cordis.yml 顶层挂载）供桥 provider 注册。
-export const inject = ['agents', 'userQuestions']
+// v0.7.1: sessions 服务（SessionStore，agent-spine 挂载）—— create/fork 后需显式 flush 落盘，
+// 不加 inject 则 ctx.sessions 访问抛 "cannot get property sessions without inject"。
+export const inject = ['agents', 'userQuestions', 'sessions']
 
 /** JSON-RPC deployment config plus runtime-only test hooks. */
 export interface JsonRpcConfig {

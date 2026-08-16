@@ -10,7 +10,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { spawn, spawnSync } from 'node:child_process'
 import { homedir, tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
@@ -453,29 +453,38 @@ export class HarnessCompanionJsonRpcServer {
     const persistence = this.ctx.get('sessionPersistence')
     if (persistence !== undefined) {
       let diskLast: number
+      let skipDualWriteCheck = false // v0.7.1：新会话零事件无磁盘日志 → 无冲突可查，跳过检查
       try {
         const loaded = await persistence.load(SessionId(params.sessionId))
         diskLast = loaded.events.at(-1)?.seq ?? -1
       } catch (error) {
-        // 结构性损坏（seq gap / 坏帧）→ 尝试自愈
-        const repaired = await this.repairSessionIfNeeded(params.sessionId)
-        if (!repaired) {
-          throw new Error(
-            `会话文件校验失败且自动修复不成功（可能正在被其他端写入）：${error instanceof Error ? error.message : String(error)}`,
-          )
+        const message = error instanceof Error ? error.message : String(error)
+        // v0.7.1 BUG-FIX：刚 create 的新会话零事件 → load 抛 "session not found"，
+        // 这是"磁盘尚无日志"而非文件损坏：无日志即无双写冲突可检测，直接跳过检查。
+        // 只有结构性损坏（seq gap / 坏帧）才需要自愈。
+        if (message.includes('not found')) {
+          skipDualWriteCheck = this.sessions.get(params.sessionId) !== undefined
+          diskLast = -1
+        } else {
+          const repaired = await this.repairSessionIfNeeded(params.sessionId)
+          if (!repaired) {
+            throw new Error(
+              `会话文件校验失败且自动修复不成功（可能正在被其他端写入）：${message}`,
+            )
+          }
+          console.log(`[self-heal] 会话 ${params.sessionId} 已自动修复，重试执行`)
+          try {
+            const loaded = await persistence.load(SessionId(params.sessionId))
+            diskLast = loaded.events.at(-1)?.seq ?? -1
+          } catch (error) {
+            throw new Error(
+              `会话文件已自愈但读取仍失败：${error instanceof Error ? error.message : String(error)}`,
+            )
+          }
+          rec.memoryLastSeq = diskLast // 重编号后以磁盘为准，避免与旧编号误判冲突
         }
-        console.log(`[self-heal] 会话 ${params.sessionId} 已自动修复，重试执行`)
-        try {
-          const loaded = await persistence.load(SessionId(params.sessionId))
-          diskLast = loaded.events.at(-1)?.seq ?? -1
-        } catch (error) {
-          throw new Error(
-            `会话文件已自愈但读取仍失败：${error instanceof Error ? error.message : String(error)}`,
-          )
-        }
-        rec.memoryLastSeq = diskLast // 重编号后以磁盘为准，避免与旧编号误判冲突
       }
-      if (rec.memoryLastSeq !== undefined && diskLast > rec.memoryLastSeq) {
+      if (!skipDualWriteCheck && rec.memoryLastSeq !== undefined && diskLast > rec.memoryLastSeq) {
         throw new Error(
           `检测到会话被其他端（如 Web 端）同时写入（本端 seq=${rec.memoryLastSeq}，磁盘 seq=${diskLast}），` +
           '为避免双写损坏已拒绝执行。请先关闭其他端该会话，或重启本端后再试。',
@@ -671,7 +680,9 @@ export class HarnessCompanionJsonRpcServer {
     if (location === undefined) {
       throw new Error('session persistence backend does not expose per-session artifacts')
     }
-    await rm(dirname(location.path), { recursive: true, force: true })
+    // v0.7.1 BUG-FIX：Windows 上 rm(recursive) 遇只读/占用残留（.bak-*/.tmp-*）会抛
+    // ENOTEMPTY，改用容错删除：先 rm，失败则手动清只读位逐文件删再删目录。
+    await forceRemoveDir(dirname(location.path))
     // A 方案（用户 2026-08-15 拍板）：同步从 Web 端投影缓存移除该会话
     await updateProjectionCache([{ type: 'delete', id: sessionId }])
     return { ok: true }
@@ -697,6 +708,9 @@ export class HarnessCompanionJsonRpcServer {
       meta: { cwd: cwdResolved },
       agentOptions,
     })
+    // v0.7.1 BUG-FIX：create 后会话在 dsh 持久化里是"零事件"状态（文件在首次 append 才落盘），
+    // 此时 persistence.load 会抛 "session not found"（loadLiveSnapshot 对 0 事件会话的设计行为）。
+    // 该会话已登记在本进程 this.sessions，readSessionMessages / prompt 会按"空会话"处理。
     this.sessions.set(sessionId, { handle })
     return { sessionId, cwd: cwdResolved }
   }
@@ -713,7 +727,19 @@ export class HarnessCompanionJsonRpcServer {
     const persistence = this.ctx.get('sessionPersistence')
     if (persistence === undefined) throw new Error('session persistence is not configured')
     // P1 修复：读历史是只读操作，绝不 dispose live 会话（此前会杀掉正在运行的任务）
-    const loaded = await persistence.load(SessionId(sessionId))
+    // v0.7.1 BUG-FIX：刚 create 的新会话是"零事件"状态，persistence.load 会抛
+    // "session not found"（loadLiveSnapshot 的设计行为）——本进程刚创建的会话应返回空历史，
+    // 而不是让手机端新建对话直接报错。
+    let loaded: Awaited<ReturnType<typeof persistence.load>>
+    try {
+      loaded = await persistence.load(SessionId(sessionId))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!message.includes('not found')) throw error
+      const live = this.sessions.get(sessionId)
+      if (live === undefined) throw error
+      return []
+    }
     const entries: SessionMessageEntry[] = []
     for (const event of loaded.events) {
       const raw = event as unknown as { type: string; time: number; surfaceOp?: unknown; data: { content?: unknown; message?: { content?: unknown } } }
@@ -1193,6 +1219,8 @@ export class HarnessCompanionJsonRpcServer {
       meta: { cwd: this.cwd },
       agentOptions,
     })
+    // v0.7.1 BUG-FIX：与 createNewSession 同源——新建会话零事件时 persistence.load 会抛
+    // "session not found"，readSessionMessages / prompt 会按"空会话"处理，无需在此落盘。
     const rec: SessionRecord = { handle }
     this.sessions.set(sessionId, rec)
     return rec
@@ -1201,6 +1229,39 @@ export class HarnessCompanionJsonRpcServer {
   private hasAdapterFor(provider: string): boolean {
     return this.ctx.get('llm')?.listProviders().some(entry => entry.id === provider) ?? false
   }
+}
+
+/**
+ * Windows 容错删除目录：rm(recursive) 遇只读/占用残留会抛 ENOTEMPTY，
+ * 兜底走手动递归：清只读位 → 删文件 → 删目录（v0.7.1 BUG-FIX）。
+ */
+async function forceRemoveDir(target: string): Promise<void> {
+  try {
+    await rm(target, { recursive: true, force: true })
+    return
+  } catch {
+    // 走到手动兜底
+  }
+  const stack: string[] = [target]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    type DirEntry = { name: string; isDirectory(): boolean }
+    const entries: DirEntry[] = await readdir(current, { withFileTypes: true }).catch(() => [])
+    for (const entry of entries) {
+      const full = join(current, entry.name)
+      if (entry.isDirectory()) {
+        stack.push(full)
+      } else {
+        try {
+          await chmod(full, 0o666)
+        } catch {
+          // 清只读位失败也不阻断删除
+        }
+        await rm(full, { force: true })
+      }
+    }
+  }
+  await rm(target, { recursive: true, force: true })
 }
 
 /** 按扩展名映射 MIME（file.download 预览用，未知回 application/octet-stream）。 */
